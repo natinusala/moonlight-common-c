@@ -284,7 +284,7 @@ static PSDP_OPTION getAttributesList(char*urlSafeAddr) {
             // Disable slicing on HEVC
             err |= addAttributeString(&optionHead, "x-nv-video[0].videoEncoderSlicesPerFrame", "1");
 
-            if (AppVersionQuad[0] >= 5) {
+            if (AppVersionQuad[0] >= 7) {
                 // Enable HDR if requested
                 if (StreamConfig.enableHdr) {
                     err |= addAttributeString(&optionHead, "x-nv-video[0].dynamicRangeMode", "1");
@@ -304,7 +304,7 @@ static PSDP_OPTION getAttributesList(char*urlSafeAddr) {
             err |= addAttributeString(&optionHead, "x-nv-clientSupportHevc", "0");
             err |= addAttributeString(&optionHead, "x-nv-vqos[0].bitStreamFormat", "0");
 
-            if (AppVersionQuad[0] >= 5) {
+            if (AppVersionQuad[0] >= 7) {
                 // HDR is not supported on H.264
                 err |= addAttributeString(&optionHead, "x-nv-video[0].dynamicRangeMode", "0");
             }
@@ -322,6 +322,18 @@ static PSDP_OPTION getAttributesList(char*urlSafeAddr) {
             }
             sprintf(payloadStr, "%d", slicesPerFrame);
             err |= addAttributeString(&optionHead, "x-nv-video[0].videoEncoderSlicesPerFrame", payloadStr);
+        }
+
+        if (AppVersionQuad[0] >= 7) {
+            if (isReferenceFrameInvalidationEnabled()) {
+                err |= addAttributeString(&optionHead, "x-nv-video[0].maxNumReferenceFrames", "0");
+            }
+            else {
+                // Restrict the video stream to 1 reference frame if we're not using
+                // reference frame invalidation. This helps to improve compatibility with
+                // some decoders that don't like the default of having 16 reference frames.
+                err |= addAttributeString(&optionHead, "x-nv-video[0].maxNumReferenceFrames", "1");
+            }
         }
         
         if (StreamConfig.audioConfiguration == AUDIO_CONFIGURATION_51_SURROUND) {
