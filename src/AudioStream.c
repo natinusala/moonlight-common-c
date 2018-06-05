@@ -17,7 +17,7 @@ static unsigned short lastSeq;
 
 #define RTP_PORT 48000
 
-#define MAX_PACKET_SIZE 400
+#define MAX_PACKET_SIZE 1400
 
 // This is much larger than we should typically have buffered, but
 // it needs to be. We need a cushion in case our thread gets blocked
@@ -42,9 +42,12 @@ static OPUS_MULTISTREAM_CONFIGURATION opus51SurroundConfig = {
     .mapping = {0, 4, 1, 5, 2, 3}
 };
 
-static POPUS_MULTISTREAM_CONFIGURATION opusConfigArray[] = {
-    &opusStereoConfig,
-    &opus51SurroundConfig,
+static OPUS_MULTISTREAM_CONFIGURATION opus51HighSurroundConfig = {
+        .sampleRate = SAMPLE_RATE,
+        .channelCount = 6,
+        .streams = 6,
+        .coupledStreams = 0,
+        .mapping = {0, 1, 2, 3, 4, 5}
 };
 
 typedef struct _QUEUED_AUDIO_PACKET {
@@ -282,9 +285,25 @@ void stopAudioStream(void) {
 
 int startAudioStream(void* audioContext, int arFlags) {
     int err;
+    POPUS_MULTISTREAM_CONFIGURATION chosenConfig;
 
-    err = AudioCallbacks.init(StreamConfig.audioConfiguration,
-        opusConfigArray[StreamConfig.audioConfiguration], audioContext, arFlags);
+    if (StreamConfig.audioConfiguration == AUDIO_CONFIGURATION_STEREO) {
+        chosenConfig = &opusStereoConfig;
+    }
+    else if (StreamConfig.audioConfiguration == AUDIO_CONFIGURATION_51_SURROUND) {
+        if (HighQualitySurroundEnabled) {
+            chosenConfig = &opus51HighSurroundConfig;
+        }
+        else {
+            chosenConfig = &opus51SurroundConfig;
+        }
+    }
+    else {
+        Limelog("Invalid audio configuration: %d\n", StreamConfig.audioConfiguration);
+        return -1;
+    }
+
+    err = AudioCallbacks.init(StreamConfig.audioConfiguration, chosenConfig, audioContext, arFlags);
     if (err != 0) {
         return err;
     }
